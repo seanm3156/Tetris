@@ -12,7 +12,48 @@ p.display.set_caption("Tetris")
 clock = p.time.Clock()
 
 class Board:
-    pass
+    def __init__(self):
+        self.state = [[0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0],
+                      [0,0,0,0,0,0,0,0,0,0]]
+
+        print(self.state)
+        
+    def push(self, piece):
+        collisions = piece.collision()
+        while collisions["down"]:
+            piece.move(0,-1)
+            collisions = piece.collision()
+        while collisions["left"]:
+            piece.move(1,0)
+            collisions = piece.collision()
+        while collisions["right"]:
+            piece.move(-1,0)
+            collisions = piece.collision()
+
+    def place(self, block):
+        pos = (block.rect.topleft[0]/BOX_SIZE, block.rect.topleft[1]/BOX_SIZE)
+        self.state[int(pos[1])][int(pos[0])] = Block(pos[0], pos[1], block.colour)
+
+    def draw_blocks(self):
+        for row in self.state:
+            for col in row:
+                if col != 0: 
+                    screen.blit(col.surf, col.rect)
+
 
 class Block:
     def __init__(self,c,r, colour):
@@ -160,9 +201,14 @@ class Piece:
                 down = True
         return {"left":left, "right":right, "down":down}
 
+    def place(self, board):
+        for block in self.blocks:
+            board.place(block)
+
 piece = Piece()
+board = Board()
 tick = 1
-speed = 60
+speed = 10
 
 while True:
     collisions = piece.collision()
@@ -174,10 +220,14 @@ while True:
         if event.type == p.KEYDOWN:
             if p.key.get_pressed()[p.K_c]:
                 piece.rotate()
+                board.push(piece)
 
     if tick % speed == 0:
         if not(collisions["down"]):
             piece.move()
+        else:
+            piece.place(board)
+            piece = Piece()
     tick += 1
     
     if tick % 5 == 0:
@@ -189,6 +239,7 @@ while True:
     screen.fill("Black")
 
     piece.draw_piece()
+    board.draw_blocks()
     p.display.update()
 
     clock.tick(60)
