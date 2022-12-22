@@ -33,16 +33,16 @@ class Board:
         print(self.state)
         
     def push(self, piece):
-        collisions = piece.collision()
+        collisions = piece.collision(self)
         while collisions["down"]:
             piece.move(0,-1)
-            collisions = piece.collision()
+            collisions = piece.collision(self)
         while collisions["left"]:
             piece.move(1,0)
-            collisions = piece.collision()
+            collisions = piece.collision(self)
         while collisions["right"]:
             piece.move(-1,0)
-            collisions = piece.collision()
+            collisions = piece.collision(self)
 
     def place(self, block):
         pos = (block.rect.topleft[0]/BOX_SIZE, block.rect.topleft[1]/BOX_SIZE)
@@ -185,7 +185,7 @@ class Piece:
         self.rot += 1
                 
 
-    def collision(self):
+    def collision(self, board):
         left, right, down = False, False, False
         for block in self.blocks:
             # left
@@ -199,6 +199,16 @@ class Piece:
             # down
             if block.rect.bottom/BOX_SIZE == DIMENSIONS[1]:
                 down = True
+
+            for row in board.state:
+                for square in row:
+                    if square != 0:
+                        if square.rect.collidepoint((block.rect.midleft[0] - BOX_SIZE, block.rect.midleft[1])):
+                            left = True
+                        if square.rect.collidepoint(block.rect.midright):
+                            right = True
+                        if square.rect.collidepoint(block.rect.midbottom):
+                            down = True
         return {"left":left, "right":right, "down":down}
 
     def place(self, board):
@@ -208,10 +218,11 @@ class Piece:
 piece = Piece()
 board = Board()
 tick = 1
+start = 0
 speed = 10
 
 while True:
-    collisions = piece.collision()
+    collisions = piece.collision(board)
 
     for event in p.event.get():
         if event.type == p.QUIT:
@@ -222,12 +233,19 @@ while True:
                 piece.rotate()
                 board.push(piece)
 
-    if tick % speed == 0:
-        if not(collisions["down"]):
+    if not(collisions["down"]):
+        if tick % speed == 0:
             piece.move()
-        else:
+            collisions = piece.collision(board)
+    else:
+        print(tick-start)
+        if start == 0:
+            start = tick
+        elif tick - start == 2*speed:
             piece.place(board)
             piece = Piece()
+            print(board.state)
+            start = 0
     tick += 1
     
     if tick % 5 == 0:
