@@ -30,7 +30,12 @@ class Board:
                       [0,0,0,0,0,0,0,0,0,0],
                       [0,0,0,0,0,0,0,0,0,0]]
 
-        print(self.state)
+    def draw_grid(self):
+        for x in range(0, DIMENSIONS[0]*BOX_SIZE, BOX_SIZE):
+            for y in range(0, DIMENSIONS[1]*BOX_SIZE, BOX_SIZE):
+                rect = p.Rect(x, y, BOX_SIZE, BOX_SIZE)
+                p.draw.rect(screen, "Grey", rect, 1)
+
         
     def push(self, piece):
         collisions = piece.collision(self)
@@ -45,14 +50,39 @@ class Board:
             collisions = piece.collision(self)
 
     def place(self, block):
+        if block.rect.topleft[1] < 0:
+            p.quit()
+            exit()
         pos = (block.rect.topleft[0]/BOX_SIZE, block.rect.topleft[1]/BOX_SIZE)
-        self.state[int(pos[1])][int(pos[0])] = Block(pos[0], pos[1], block.colour)
+        self.state[int(pos[1])][int(pos[0])] = block.colour
 
     def draw_blocks(self):
-        for row in self.state:
-            for col in row:
-                if col != 0: 
-                    screen.blit(col.surf, col.rect)
+        for r, row in enumerate(self.state):
+            for c, col in enumerate(row):
+                if col != 0:
+                    block = Block(c, r, col)
+                    screen.blit(block.surf, block.rect)
+
+    def clear_line(self):
+        empty = 0
+        found = False
+        for i, row in enumerate(reversed(self.state)):
+            i = DIMENSIONS[1]-1 - i
+            for square in row:
+                if square == 0:
+                    empty += 1
+
+            if empty == 0:
+                found = True
+
+            if found:
+                if i > 0:
+                    self.state[i], self.state[i-1] = deepcopy(self.state[i-1]), deepcopy(self.state[i])
+                else:
+                    self.state[i] = [0,0,0,0,0,0,0,0,0,0]
+            empty = 0
+        found = False
+
 
 
 class Block:
@@ -200,14 +230,14 @@ class Piece:
             if block.rect.bottom/BOX_SIZE == DIMENSIONS[1]:
                 down = True
 
-            for row in board.state:
-                for square in row:
+            for r, row in enumerate(board.state):
+                for c, square in enumerate(row):
                     if square != 0:
-                        if square.rect.collidepoint((block.rect.midleft[0] - BOX_SIZE, block.rect.midleft[1])):
+                        if block.rect.collidepoint((c+1)*BOX_SIZE, r*BOX_SIZE):
                             left = True
-                        if square.rect.collidepoint(block.rect.midright):
+                        if block.rect.collidepoint((c-1)*BOX_SIZE, r*BOX_SIZE):
                             right = True
-                        if square.rect.collidepoint(block.rect.midbottom):
+                        if block.rect.collidepoint((c)*BOX_SIZE, (r-1)*BOX_SIZE):
                             down = True
         return {"left":left, "right":right, "down":down}
 
@@ -219,7 +249,8 @@ piece = Piece()
 board = Board()
 tick = 1
 start = 0
-speed = 10
+speed = 30
+fast = False
 
 while True:
     collisions = piece.collision(board)
@@ -232,32 +263,40 @@ while True:
             if p.key.get_pressed()[p.K_c]:
                 piece.rotate()
                 board.push(piece)
+            elif p.key.get_pressed()[p.K_SPACE]:
+                fast = True
+            elif p.key.get_pressed()[p.K_LEFT] and not(collisions["left"]):
+                piece.move(-1, 0)
+            elif p.key.get_pressed()[p.K_RIGHT] and not(collisions["right"]):
+                piece.move(1, 0)
+
+    while not collisions["down"] and fast:
+        piece.move()
+        collisions = piece.collision(board)
+    else:
+        fast = False
 
     if not(collisions["down"]):
+        start = 0
         if tick % speed == 0:
             piece.move()
             collisions = piece.collision(board)
     else:
-        print(tick-start)
         if start == 0:
             start = tick
         elif tick - start == 2*speed:
             piece.place(board)
             piece = Piece()
-            print(board.state)
             start = 0
     tick += 1
     
-    if tick % 5 == 0:
-        if p.key.get_pressed()[p.K_LEFT] and not(collisions["left"]):
-            piece.move(-1, 0)
-        if p.key.get_pressed()[p.K_RIGHT] and not(collisions["right"]):
-            piece.move(1, 0)
 
     screen.fill("Black")
+    board.clear_line()
 
     piece.draw_piece()
     board.draw_blocks()
+    board.draw_grid()
     p.display.update()
 
     clock.tick(60)
