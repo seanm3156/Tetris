@@ -284,7 +284,7 @@ while True:
     else:
         if start == 0:
             start = tick
-        elif tick - start == 2*speed:
+        elif tick - start == speed:
             piece.place(board)
             piece = Piece()
             start = 0
